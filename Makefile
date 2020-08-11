@@ -1,6 +1,6 @@
 #******************************************************************************
 #
-# Makefile - Rules for compiling
+# Makefile - Rules for building the libraries, examples and docs.
 #
 # Copyright (c) 2020, Ambiq Micro
 # All rights reserved.
@@ -37,13 +37,163 @@
 # This is part of revision 2.4.2 of the AmbiqSuite Development Package.
 #
 #******************************************************************************
+TARGET := freertos_lowpower
+COMPILERNAME := gcc
+PROJECT := freertos_lowpower_gcc
+CONFIG := ./bin
 
-# Include rules specific to this board
--include ../../board-defs.mk
--include example-defs.mk
+SDK_ROOT := ./Apollo3_SDK
+FREE_RTOS_ROOT = ./freertos
 
-# All makefiles use this to find the top level directory.
-SWROOT?=../../../..
+SHELL:=/bin/bash
+#### Setup ####
 
-# Include rules for building generic examples.
-include $(SWROOT)/makedefs/example.mk
+TOOLCHAIN ?= arm-none-eabi
+PART = apollo3
+CPU = cortex-m4
+FPU = fpv4-sp-d16
+# Default to FPU hardware calling convention.  However, some customers and/or
+# applications may need the software calling convention.
+#FABI = softfp
+FABI = hard
+
+LINKER_FILE := ./src/freertos_lowpower.ld
+
+#### Required Executables ####
+CC = $(TOOLCHAIN)-gcc
+GCC = $(TOOLCHAIN)-gcc
+CPP = $(TOOLCHAIN)-cpp
+LD = $(TOOLCHAIN)-ld
+CP = $(TOOLCHAIN)-objcopy
+OD = $(TOOLCHAIN)-objdump
+RD = $(TOOLCHAIN)-readelf
+AR = $(TOOLCHAIN)-ar
+SIZE = $(TOOLCHAIN)-size
+RM = $(shell which rm 2>/dev/null)
+
+EXECUTABLES = CC LD CP OD AR RD SIZE GCC
+K := $(foreach exec,$(EXECUTABLES),\
+        $(if $(shell which $($(exec)) 2>/dev/null),,\
+        $(info $(exec) not found on PATH ($($(exec))).)$(exec)))
+$(if $(strip $(value K)),$(info Required Program(s) $(strip $(value K)) not found))
+
+ifneq ($(strip $(value K)),)
+all clean:
+	$(info Tools $(TOOLCHAIN)-$(COMPILERNAME) not installed.)
+	$(RM) -rf bin
+else
+
+DEFINES = -DPART_$(PART)
+DEFINES+= -DAM_PART_APOLLO3
+DEFINES+= -DAM_UTIL_FAULTISR_PRINT
+DEFINES+= -DAM_FREERTOS
+DEFINES+= -DAM_PACKAGE_BGA
+DEFINES+= -DAM_DEBUG_PRINTF
+DEFINES+= -Dgcc
+
+INCLUDES = -I$(FREE_RTOS_ROOT)/portable/GCC/AMapollo2
+INCLUDES+= -I$(SDK_ROOT)/CMSIS/AmbiqMicro/Include
+INCLUDES+= -I$(SDK_ROOT)/boards/apollo3_evb/bsp
+INCLUDES+= -I$(SDK_ROOT)/devices
+INCLUDES+= -I../../../../..
+INCLUDES+= -I./inc
+INCLUDES+= -I$(SDK_ROOT)/mcu/apollo3
+INCLUDES+= -I$(FREE_RTOS_ROOT)/include
+INCLUDES+= -I$(SDK_ROOT)/utils
+INCLUDES+= -I$(SDK_ROOT)/CMSIS/ARM/Include
+
+VPATH = $(FREE_RTOS_ROOT)/portable/MemMang
+VPATH+=:$(SDK_ROOT)/devices
+VPATH+=:$(FREE_RTOS_ROOT)/portable/GCC/AMapollo2
+VPATH+=:./src
+VPATH+=:$(FREE_RTOS_ROOT)
+VPATH+=:$(SDK_ROOT)/utils
+
+SRC = freertos_lowpower.c
+SRC += led_task.c
+SRC += rtos.c
+SRC += heap_2.c
+SRC += am_devices_button.c
+SRC += am_devices_led.c
+SRC += event_groups.c
+SRC += port.c
+SRC += list.c
+SRC += queue.c
+SRC += tasks.c
+SRC += timers.c
+SRC += am_util_debug.c
+SRC += am_util_delay.c
+SRC += am_util_faultisr.c
+SRC += am_util_stdio.c
+SRC += startup_gcc.c
+
+CSRC = $(filter %.c,$(SRC))
+ASRC = $(filter %.s,$(SRC))
+
+OBJS = $(CSRC:%.c=$(CONFIG)/%.o)
+OBJS+= $(ASRC:%.s=$(CONFIG)/%.o)
+
+DEPS = $(CSRC:%.c=$(CONFIG)/%.d)
+DEPS+= $(ASRC:%.s=$(CONFIG)/%.d)
+
+LIBS = ./Apollo3_SDK/boards/apollo3_evb/bsp/gcc/bin/libam_bsp.a
+LIBS += ./Apollo3_SDK/mcu/apollo3/hal/gcc/bin/libam_hal.a
+
+CFLAGS = -mthumb -mcpu=$(CPU) -mfpu=$(FPU) -mfloat-abi=$(FABI)
+CFLAGS+= -ffunction-sections -fdata-sections -fomit-frame-pointer
+CFLAGS+= -MMD -MP -std=c99 -Wall -g
+CFLAGS+= -O3
+CFLAGS+= $(DEFINES)
+CFLAGS+= $(INCLUDES)
+CFLAGS+= 
+
+LFLAGS = -mthumb -mcpu=$(CPU) -mfpu=$(FPU) -mfloat-abi=$(FABI)
+LFLAGS+= -nostartfiles -static
+LFLAGS+= -Wl,--gc-sections,--entry,Reset_Handler,-Map,$(CONFIG)/$(TARGET).map
+LFLAGS+= -Wl,--start-group -lm -lc -lgcc $(LIBS) -Wl,--end-group
+LFLAGS+= 
+
+# Additional user specified CFLAGS
+CFLAGS+=$(EXTRA_CFLAGS)
+
+CPFLAGS = -Obinary
+
+ODFLAGS = -S
+
+#### Rules ####
+all: directories $(CONFIG)/$(TARGET).bin
+
+directories: $(CONFIG)
+
+$(CONFIG):
+	@mkdir -p $@
+
+$(CONFIG)/%.o: %.c $(CONFIG)/%.d
+	@echo " Compiling $(COMPILERNAME) $<" ;\
+	$(CC) -c $(CFLAGS) $< -o $@
+
+$(CONFIG)/%.o: %.s $(CONFIG)/%.d
+	@echo " Assembling $(COMPILERNAME) $<" ;\
+	$(CC) -c $(CFLAGS) $< -o $@
+
+$(CONFIG)/$(TARGET).axf: $(OBJS) $(LIBS)
+	@echo " Linking $(COMPILERNAME) $@" ;\
+	$(CC) -Wl,-T,$(LINKER_FILE) -o $@ $(OBJS) $(LFLAGS)
+
+$(CONFIG)/$(TARGET).bin: $(CONFIG)/$(TARGET).axf
+	@echo " Copying $(COMPILERNAME) $@..." ;\
+	$(CP) $(CPFLAGS) $< $@ ;\
+	$(OD) $(ODFLAGS) $< > $(CONFIG)/$(TARGET).lst
+
+clean:
+	@echo "Cleaning..." ;\
+	$(RM) -f $(OBJS) $(DEPS) \
+	    $(CONFIG)/$(TARGET).bin $(CONFIG)/$(TARGET).axf \
+	    $(CONFIG)/$(TARGET).lst $(CONFIG)/$(TARGET).map
+
+$(CONFIG)/%.d: ;
+
+# Automatically include any generated dependencies
+-include $(DEPS)
+endif
+.PHONY: all clean directories
