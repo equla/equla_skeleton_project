@@ -194,12 +194,6 @@ clean:
 
 $(CONFIG)/%.d: ;
 
-../../../bsp/gcc/bin/libam_bsp.a:
-	$(MAKE) -C ../../../bsp
-
-../../../../../mcu/apollo3/hal/gcc/bin/libam_hal.a:
-	$(MAKE) -C ../../../../../mcu/apollo3/hal
-
 # Automatically include any generated dependencies
 -include $(DEPS)
 endif
