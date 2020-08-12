@@ -5,9 +5,9 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "debug Free RTOS",
+            "name": "Debug",
             "cwd": "${workspaceRoot}",
-            "executable": "./bin/freertos_lowpower.axf",
+            "executable": "./bin/main.axf",
             "request": "launch",
             "type": "cortex-debug",
             "servertype": "jlink",
