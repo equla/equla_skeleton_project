@@ -169,15 +169,15 @@ setup_task(void *pvParameters)
     //
     am_util_debug_printf("Running setup tasks...\r\n");
 
-    //
-    // Run setup functions.
-    //
-    LedTaskSetup();
-    disable_print_interface();
-    //
-    // Create the functional tasks
-    //
-    xTaskCreate(LedTask, "LEDTask", 512, 0, 3, &led_task_handle);
+    // //
+    // // Run setup functions.
+    // //
+    // LedTaskSetup();
+    // disable_print_interface();
+    // //
+    // // Create the functional tasks
+    // //
+    // xTaskCreate(LedTask, "LEDTask", 512, 0, 3, &led_task_handle);
     //
     // The setup operations are complete, so suspend the setup task now.
     //

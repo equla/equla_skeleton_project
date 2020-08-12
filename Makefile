@@ -110,7 +110,6 @@ VPATH+=:$(FREE_RTOS_ROOT)
 VPATH+=:$(SDK_ROOT)/utils
 
 SRC = main.c
-SRC += led_task.c
 SRC += rtos.c
 SRC += heap_2.c
 SRC += am_devices_button.c
