@@ -58,7 +58,7 @@
 #include "queue.h"
 #include "portmacro.h"
 #include "portable.h"
-#include "freertos_lowpower.h"
+#include "main.h"
 
 //*****************************************************************************
 //

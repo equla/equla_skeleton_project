@@ -61,7 +61,7 @@
 // that everywhere.
 //
 //*****************************************************************************
-#include "freertos_lowpower.h"
+#include "main.h"
 #include "rtos.h"
 
 

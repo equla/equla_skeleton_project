@@ -37,9 +37,9 @@
 # This is part of revision 2.4.2 of the AmbiqSuite Development Package.
 #
 #******************************************************************************
-TARGET := freertos_lowpower
+TARGET := main
 COMPILERNAME := gcc
-PROJECT := freertos_lowpower_gcc
+PROJECT := equla_skeleton
 CONFIG := ./bin
 
 SDK_ROOT := ./Apollo3_SDK
@@ -57,7 +57,7 @@ FPU = fpv4-sp-d16
 #FABI = softfp
 FABI = hard
 
-LINKER_FILE := ./src/freertos_lowpower.ld
+LINKER_FILE := ./src/main.ld
 
 #### Required Executables ####
 CC = $(TOOLCHAIN)-gcc
@@ -109,7 +109,7 @@ VPATH+=:./src
 VPATH+=:$(FREE_RTOS_ROOT)
 VPATH+=:$(SDK_ROOT)/utils
 
-SRC = freertos_lowpower.c
+SRC = main.c
 SRC += led_task.c
 SRC += rtos.c
 SRC += heap_2.c
